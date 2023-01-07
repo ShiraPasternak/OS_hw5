@@ -1,0 +1,110 @@
+//
+// Created by shira on 07/01/2023.
+//
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <netdb.h>
+#include <stdint.h>
+
+#define MB (1024 * 1024)
+
+int main(int argc, char **argv) { //general build taken from recitations code
+    char *ip, *path, fileBuff[MB];
+    unsigned short port;
+    int sockfd = -1;
+    struct sockaddr_in serv_addr;
+    struct sockaddr_in my_addr;   // where we actually connected through todo delete
+    struct sockaddr_in peer_addr; // where we actually connected to todo delete
+    socklen_t addrsize = sizeof(struct sockaddr_in ); // todo delete
+
+
+    if (argc != 4) {
+        perror("incorrect number of inputs");
+        exit(1);
+    } else {
+        ip = argv[1];
+        sscanf(argv[2], "%hu", &port);
+        path = argv[3];
+    }
+
+    int fd = open(path, O_RDWR);
+    if(fd < 0) {
+        perror("Can't open file for input path\n");
+        exit(1);
+    }
+    fseek(fd, 0, SEEK_END);
+    long int lenOfFile = ftell(fd);
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    // serv_addr.sin_family = AF_INET; todo make sure if needed
+    serv_addr.sin_port = htons(port);
+    int success = inet_pton(AF_INET, ip, serv_addr);
+    printf("family after inet_pton()%h\n", serv_addr.sin_family); // todo delete after verifying
+    if (success == 0) {
+        perror("input ip isn't a valid string");
+        exit(1);
+    }
+    else {
+        perror("error in inet_pton()");
+        exit(1);
+    }
+
+    if( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) //SOCK_STREAM for TCP socket
+    {
+        perror("Could not create socket \n");
+        exit(1);
+    }
+
+    printf("Client: connecting...\n"); // todo delete at the end
+    // connect socket to the target address
+    if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Connect Failed\n");
+        exit(1);
+    }
+
+    // todo delete at the end
+    // print socket details
+    getsockname(sockfd, (struct sockaddr*) &my_addr,   &addrsize);
+    getpeername(sockfd, (struct sockaddr*) &peer_addr, &addrsize);
+    printf("Client: Connected. \n"
+           "\t\tSource IP: %s Source Port: %d\n"
+           "\t\tTarget IP: %s Target Port: %d\n",
+           inet_ntoa((my_addr.sin_addr)),    ntohs(my_addr.sin_port),
+           inet_ntoa((peer_addr.sin_addr)),  ntohs(peer_addr.sin_port));
+    //todo until here
+
+    uint32_t file_len_network_byte_order = htonl((uint32_t) lenOfFile); // todo handle error
+    if (send(sockfd, &file_len_network_byte_order, sizeof(uint32_t), 0) != sizeof(uint32_t)) { // https://www.gta.ufrj.br/ensino/eel878/sockets/htonsman.html
+        perror("failed to send len of file to server");
+    }
+
+    //todo add reading from file in chunks of 1MB to fileBuff
+    //int charRead = 0;
+    int charSend = 0;
+    int totalSent = 0;
+    while (lenOfFile - totalSent > 0) {
+        charSend = write(sockfd, fileBuff + totalSent, MB);
+        if (charSend == 0) {
+            perror("server closed connection?"); // todo consider to modify
+        }
+        totalSent += charSend;
+    }
+
+    uint32_t num_of_printable_chars;
+    if (recv(sockfd, &num_of_printable_chars, sizeof(uint32_t), 0) != sizeof(uint32_t)) {
+        perror("failed to read num_of_printable_chars from server");
+    }
+    printf("# of printable characters: %u\n", (unsigned long) num_of_printable_chars); //todo verify if ntohl() is needed before printing
+
+    close(fd);
+    close(sockfd);
+    exit(0);
+}
