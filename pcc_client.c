@@ -16,6 +16,12 @@
 
 #define MB (1024 * 1024)
 
+void writeBufferToServer(char *buff, int sockfd, size_t messageLen, int shifting);
+void writeIntToServer(long int file, int fd);
+void clearBuffer(char *buff);
+uint32_t readIntFromServer(int sockfd);
+void readToBuffFromServer(int sockfd, char *buff, size_t messageLen);
+
 int main(int argc, char **argv) { //general build taken from recitations code
     char *ip, *path, fileBuff[MB];
     unsigned short port;
@@ -24,7 +30,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
     struct sockaddr_in my_addr;   // where we actually connected through todo delete
     struct sockaddr_in peer_addr; // where we actually connected to todo delete
     socklen_t addrsize = sizeof(struct sockaddr_in ); // todo delete
-
 
     if (argc != 4) {
         perror("incorrect number of inputs");
@@ -81,30 +86,79 @@ int main(int argc, char **argv) { //general build taken from recitations code
            inet_ntoa((peer_addr.sin_addr)),  ntohs(peer_addr.sin_port));
     //todo until here
 
-    uint32_t file_len_network_byte_order = htonl((uint32_t) lenOfFile); // todo handle error
+    writeIntToServer(lenOfFile, fd);
+    /*uint32_t file_len_network_byte_order = htonl((uint32_t) lenOfFile); // todo handle error
     if (send(sockfd, &file_len_network_byte_order, sizeof(uint32_t), 0) != sizeof(uint32_t)) { // https://www.gta.ufrj.br/ensino/eel878/sockets/htonsman.html
         perror("failed to send len of file to server");
-    }
+    }*/
 
-    //todo add reading from file in chunks of 1MB to fileBuff
-    //int charRead = 0;
-    int charSend = 0;
-    int totalSent = 0;
-    while (lenOfFile - totalSent > 0) {
-        charSend = write(sockfd, fileBuff + totalSent, MB);
-        if (charSend == 0) {
-            perror("server closed connection?"); // todo consider to modify
+    memset(fileBuff, 0,sizeof(MB));
+    char c;
+    int charCounter = 0, chunksCounter = 0;
+    while ((c = fgetc(fd)) != EOF)
+    {
+        fileBuff[charCounter] = c;
+        charCounter++;
+        if (charCounter==MB) {
+            writeBufferToServer(fileBuff, sockfd, MB, chunksCounter);
         }
-        totalSent += charSend;
+        clearBuffer(fileBuff);
+        chunksCounter++;
     }
 
-    uint32_t num_of_printable_chars;
+    uint32_t numPrintableChars = readIntFromServer(sockfd);
+    /*
     if (recv(sockfd, &num_of_printable_chars, sizeof(uint32_t), 0) != sizeof(uint32_t)) {
         perror("failed to read num_of_printable_chars from server");
-    }
-    printf("# of printable characters: %u\n", (unsigned long) num_of_printable_chars); //todo verify if ntohl() is needed before printing
+    }*/
+    printf("# of printable characters: %u\n", (unsigned long) numPrintableChars);
 
     close(fd);
     close(sockfd);
     exit(0);
+}
+
+uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+    uint32_t recv;
+    char *intBuff = (char*)&recvInt;
+    readToBuffFromServer(sockfd, intBuff, sizeof(uint32_t));
+    return ntohl(recv);
+}
+
+void readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
+    int charRead = 0;
+    int totalRead = 0;
+    while(messageLen - totalRead > 0) {
+        charRead = read(sockfd, buff + totalRead, messageLen - 1);
+        if(charRead <= 0)
+            perror("error while reading from server to client"); // todo consider to modify
+        //buff[bytes_read] = '\0';
+        totalRead += charRead;
+    }
+}
+
+void writeIntToServer(long int len, int fd) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+    uint32_t conv = htonl(len);
+    /*char *dataBuff;
+    memset(dataBuff, 0,sizeof(conv));*/
+    char *dataBuff = (char*)&conv;
+    writeBufferToServer(dataBuff, fd, sizeof(conv), 0);
+}
+
+void clearBuffer(char *buff) {
+    for (int i = 0; i < MB; ++i) {
+        buff[i] = 0;
+    }
+}
+
+void writeBufferToServer(char *buff, int sockfd, size_t messageLen, int shifting) {
+    int charSend = 0;
+    int totalSent = 0;
+    while (messageLen - totalSent > 0) {
+        charSend = write(sockfd, buff + (totalSent + (shifting*messageLen)), messageLen);
+        if (charSend <= 0) {
+            perror("error while writing from client to server"); // todo consider to modify
+        }
+        totalSent += charSend;
+    }
 }
