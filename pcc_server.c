@@ -147,15 +147,16 @@ int main(int argc, char **argv) { //general build taken from recitations code
             exit(1);
         }
         initPcc();
+        printf("succeeded to init PCC\n");
         // Accept a connection.
         // Can use NULL in 2nd and 3rd arguments
         // but we want to print the client socket details
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
-        if(connfd < 0)
+        if (connfd < 0)
             perror("Accept Failed");
-        if (connfd != -EINTR)
+        if (connfd < 0 && connfd != -EINTR)
             exit(1);
-
+        printf("connection succeeded\n");
         // todo delete at the end
         getsockname(connfd, (struct sockaddr*) &my_addr, &addrsize);
         getpeername(connfd, (struct sockaddr*) &peer_addr, &addrsize);
@@ -167,7 +168,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
                 inet_ntoa( my_addr.sin_addr   ),
                 ntohs(     my_addr.sin_port   ) );
         //todo until here
-
+        printf("starting reading from client - len of file\n");
         // reading phase - len of text
         uint32_t expectedLen = readIntFromClient(connfd);
         if (expectedLen < 0){
@@ -175,6 +176,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             continue;
             //failureInClient = 1;
         }
+        printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
         int printable, chunks = 0;
         // reading phase - text
@@ -183,7 +185,9 @@ int main(int argc, char **argv) { //general build taken from recitations code
             chunks = expectedLen / MB + 1;
         else
             chunks = expectedLen / MB;
+        printf("starting reading from client - file\n");
         for (int i = 0; i < chunks; ++i) { // reading in chunks of 1 MB
+            printf("reading the %d-th chunk\n", i);
             if (readToBuffFromClient(connfd, dataBuff, MB) < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;

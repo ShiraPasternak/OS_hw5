@@ -37,7 +37,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     socklen_t addrsize = sizeof(struct sockaddr_in ); // todo delete
 
     if (argc != 4) {
-        printf("incorrect number of inputs\n");
+        perror("incorrect number of inputs\n");
         exit(1);
     } else {
         ip = argv[1];
@@ -46,8 +46,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }
 
     fd = fopen(path, "r");
-    if(fd < 0) {
-        perror("Can't open file for input path");
+    if(fd == NULL) {
+        perror("Can't open file for input path\n");
         exit(1);
     }
     if (fseek(fd, 0, SEEK_END) < 0) {
