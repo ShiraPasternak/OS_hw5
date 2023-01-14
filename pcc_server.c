@@ -112,10 +112,12 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenfd < 0)
+    if (listenfd < 0){
         perror("error in initializing of socket from server side");
-    if (listenfd < 0 && listenfd != EINTR)
         exit(1);
+    }
+/*    if (listenfd < 0 && listenfd != EINTR)
+        exit(1);*/
 
     printf("socket created\n");
 
@@ -141,7 +143,9 @@ int main(int argc, char **argv) { //general build taken from recitations code
         exit(1);
     }
     printf("listen done\n");
+
     struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler};
+
     while(1) {
         printf("entered loop\n");
         totalIsUpdated = false;
@@ -155,10 +159,15 @@ int main(int argc, char **argv) { //general build taken from recitations code
         // Can use NULL in 2nd and 3rd arguments
         // but we want to print the client socket details
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
-        if (connfd < 0)
-            perror("Accept Failed");
-        if (connfd < 0 && connfd != -EINTR)
+        if (connfd < 0 && connfd != -EINTR) {
             exit(1);
+            perror("Accept Failed");
+        }
+        if (connfd < 0) {
+            perror("Accept Failed");
+            continue;
+        }
+
         printf("connection succeeded\n");
         // todo delete at the end
         getsockname(connfd, (struct sockaddr*) &my_addr, &addrsize);

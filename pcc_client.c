@@ -27,6 +27,8 @@ void clearBuffer(char *buff);
 uint32_t readIntFromServer(int sockfd);
 void readToBuffFromServer(int sockfd, char *buff, size_t messageLen);
 
+void cleanUp(FILE *fd, int sockfd);
+
 int main(int argc, char **argv) { //general build taken from recitations code
     char *ip, *path, fileBuff[MB];
     FILE *fd;
@@ -53,11 +55,13 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }
     if (fseek(fd, 0, SEEK_END) < 0) {
         perror("error in fseek in file");
+        cleanUp(fd, sockfd);
         exit(1);
     }
     long int lenOfFile = ftell(fd);
     if (lenOfFile < 0) {
         perror("error in ftell in file");
+        cleanUp(fd, sockfd);
         exit(1);
     }
     rewind(fd);
@@ -69,15 +73,18 @@ int main(int argc, char **argv) { //general build taken from recitations code
     int success = inet_pton(AF_INET, ip, &serv_addr.sin_addr);
     if (success == 0) {
         perror("input ip isn't a valid string");
+        cleanUp(fd, sockfd);
         exit(1);
     }
     else if (success < 0) {
         perror("error in inet_pton()");
+        cleanUp(fd, sockfd);
         exit(1);
     }
 
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { //SOCK_STREAM for TCP socket
         perror("Could not create socket");
+        cleanUp(fd, sockfd);
         exit(1);
     }
 
@@ -85,6 +92,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     // connect socket to the target address
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
         perror("Connect Failed");
+        cleanUp(fd, sockfd);
         exit(1);
     }
 
@@ -108,8 +116,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     memset(fileBuff, 0,sizeof(MB));
     char c;
     int charCounter = 0, chunksCounter = 0;
-    while ((c = fgetc(fd)) != EOF)
-    {
+    while ((c = fgetc(fd)) != EOF) {
         fileBuff[charCounter] = c;
         charCounter++;
         if (charCounter==MB) {
@@ -130,9 +137,14 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }*/
     printf("# of printable characters: %u\n", (unsigned int) numPrintableChars);
 
-    fclose(fd);
-    close(sockfd);
+    cleanUp(fd, sockfd);
     exit(0);
+}
+
+void cleanUp(FILE *fd, int sockfd) {
+    if (sockfd != -1)
+        close(sockfd);
+    fclose(fd);
 }
 
 uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
