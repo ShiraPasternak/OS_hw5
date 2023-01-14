@@ -50,8 +50,15 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("Can't open file for input path");
         exit(1);
     }
-    fseek(fd, 0, SEEK_END);
+    if (fseek(fd, 0, SEEK_END) < 0) {
+        perror("error in fseek in file");
+        exit(1);
+    }
     long int lenOfFile = ftell(fd);
+    if (lenOfFile < 0) {
+        perror("error in ftell in file");
+        exit(1);
+    }
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET; // todo make sure if needed
@@ -66,8 +73,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         exit(1);
     }
 
-    if( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) //SOCK_STREAM for TCP socket
-    {
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) { //SOCK_STREAM for TCP socket
         perror("Could not create socket");
         exit(1);
     }
@@ -134,8 +140,10 @@ void readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
         charRead = read(sockfd, buff + totalRead, messageLen - 1);
-        if(charRead <= 0)
-            perror("error while reading from server to client"); // todo consider to modify
+        if(charRead <= 0) {
+            perror("error while reading from server to client");
+            exit(1);
+        }
         //buff[bytes_read] = '\0';
         totalRead += charRead;
     }
@@ -161,7 +169,8 @@ void writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting
     while (messageLen - totalSent > 0) {
         charSend = write(sockfd, buff + (totalSent + (shifting*messageLen)), messageLen);
         if (charSend <= 0) {
-            perror("error while writing from client to server"); // todo consider to modify
+            perror("error while writing from client to server");
+            exit(1);
         }
         totalSent += charSend;
     }

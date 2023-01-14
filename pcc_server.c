@@ -116,7 +116,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     printf("socket created\n");
 
-    memset(&serv_addr, 0, addrsize))
+    memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
     // INADDR_ANY = any local machine address
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
