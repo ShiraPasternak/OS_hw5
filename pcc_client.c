@@ -59,6 +59,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("error in ftell in file");
         exit(1);
     }
+    printf("lenOfFile = %lu\n", (unsigned long)lenOfFile);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET; // todo make sure if needed
@@ -111,9 +112,9 @@ int main(int argc, char **argv) { //general build taken from recitations code
         charCounter++;
         if (charCounter==MB) {
             writeBufferToServer(sockfd, fileBuff, MB, chunksCounter);
+            clearBuffer(fileBuff);
+            chunksCounter++;
         }
-        clearBuffer(fileBuff);
-        chunksCounter++;
     }
 
     uint32_t numPrintableChars = readIntFromServer(sockfd);
@@ -154,6 +155,7 @@ void writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/q
     /*char *dataBuff;
     memset(dataBuff, 0,sizeof(conv));*/
     char *dataBuff = (char*)&conv;
+    printf("size of int is= %zu\n", sizeof(conv));
     writeBufferToServer(sockfd, dataBuff, sizeof(conv), 0);
 }
 
@@ -173,5 +175,7 @@ void writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting
             exit(1);
         }
         totalSent += charSend;
+        printf("char sent = %d\n", charSend);
+        printf("total sent = %d\n", totalSent);
     }
 }

@@ -220,12 +220,13 @@ int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting)
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
         charSend = write(connfd, buff + (totalSent + (shifting*messageLen)), messageLen);
-        if (charSend <= 0)
+        if (charSend <= 0) {
             perror("error while writing from server to client");
-        else if (charSend == -ETIMEDOUT || charSend == -ECONNRESET || charSend == -EPIPE || charSend == -EINTR || charSend == 0)
-            return -1;
-        else
-            exit(1);
+            if (charSend == -ETIMEDOUT || charSend == -ECONNRESET || charSend == -EPIPE || charSend == -EINTR || charSend == 0)
+                return -1;
+            else
+                exit(1);
+        }
         totalSent += charSend;
     }
     return 0;
@@ -239,23 +240,27 @@ int writeIntToClient(int fd, long int num) { // return 0 if no errors
 }
 
 int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
+    printf("in readToBuffFromClient\n");
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
         charRead = read(connfd, buff + totalRead, messageLen - 1);
-        if (charRead <= 0)
+        if (charRead <= 0) {
             perror("error while reading from client to server");
-        else if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
-            return -1;
-        else
-            exit(1);
+            if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
+                return -1;
+            else
+                exit(1);
+        }
         totalRead += charRead;
     }
+    printf("server read : %s\n", buff);
     return 0;
 }
 
 //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
 uint32_t readIntFromClient(int connfd) { // returns zero if no errors
+    printf("in readIntFromClient\n");
     uint32_t recv;
     char *intBuff = (char*)&recv;
     if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t)) < 0)
