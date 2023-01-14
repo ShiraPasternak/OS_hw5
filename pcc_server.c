@@ -111,16 +111,12 @@ int main(int argc, char **argv) { //general build taken from recitations code
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0)
         perror("error in initializing of socket from server side");
-    if (listenfd != EINTR)
+    if (listenfd < 0 && listenfd != EINTR)
         exit(1);
 
     printf("socket created\n");
 
-    if (memset(&serv_addr, 0, addrsize)) {
-        perror("error in memset in server side");
-        exit(1);
-    }
-
+    memset(&serv_addr, 0, addrsize))
     serv_addr.sin_family = AF_INET;
     // INADDR_ANY = any local machine address
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);

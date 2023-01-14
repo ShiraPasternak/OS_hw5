@@ -54,7 +54,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     long int lenOfFile = ftell(fd);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
-    // serv_addr.sin_family = AF_INET; todo make sure if needed
+    serv_addr.sin_family = AF_INET; // todo make sure if needed
     serv_addr.sin_port = htons(port);
     int success = inet_pton(AF_INET, ip, &serv_addr.sin_addr);
     if (success == 0) {
