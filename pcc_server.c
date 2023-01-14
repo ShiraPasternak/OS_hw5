@@ -16,7 +16,8 @@
 #include <signal.h>
 #include <unistd.h>
 
-#define MB (1024 * 1024)
+//#define MB (1024 * 1024)
+#define MB 10
 #define PRINTABLE 95
 
 typedef struct PCC {
@@ -31,7 +32,7 @@ bool clientCountIsEmpty();
 void clearBuffer(char *buff);
 int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting);
 int writeIntToClient(int fd, long int num);
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen);
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen, int shifting);
 uint32_t readIntFromClient(int connfd);
 int countPrintableInChunk(char *buff);
 
@@ -80,9 +81,11 @@ void printStatic() {
 void currClientSignalHandler(int signum) {
     printf("Can't stop me! (%d)\n", signum); // todo delete before submitting
     if (clientCountIsEmpty()) {
+        printf("no client is being processed\n");
         exit(1);
     }
     else {
+        printf("one client is being processed\n");
         if (!totalIsUpdated)
             addClientCountToTotal();
         printStatic();
@@ -102,7 +105,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     socklen_t addrsize = sizeof(struct sockaddr_in); // todo delete
 
     if (argc != 2) {
-        printf("incorrect number of inputs\n");
+        perror("incorrect number of inputs\n");
         exit(1);
     } else {
         sscanf(argv[1], "%hu", &port);
@@ -189,14 +192,16 @@ int main(int argc, char **argv) { //general build taken from recitations code
         for (int i = 0; i < chunks; ++i) { // reading in chunks of 1 MB
             printf("reading the %d-th chunk\n", i);
             if (remChar / MB == 0)
-                charRead = readToBuffFromClient(connfd, dataBuff, remChar % MB);
+                charRead = readToBuffFromClient(connfd, dataBuff, remChar % MB, chunks);
             else
-                charRead = readToBuffFromClient(connfd, dataBuff, MB);
+                charRead = readToBuffFromClient(connfd, dataBuff, MB, chunks);
             if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
             }
             remChar -= charRead;
+            printf("charRead = %d remChar = %d\n", charRead, remChar);
+
             printable = countPrintableInChunk(dataBuff);
         }
         if (failureInClient) {
@@ -224,7 +229,7 @@ int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting)
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
-        charSend = write(connfd, buff + (totalSent + (shifting*messageLen)), messageLen);
+        charSend = write(connfd, buff + (totalSent + (shifting*MB)), messageLen);
         if (charSend <= 0) {
             perror("error while writing from server to client");
             if (charSend == -ETIMEDOUT || charSend == -ECONNRESET || charSend == -EPIPE || charSend == -EINTR || charSend == 0)
@@ -244,12 +249,12 @@ int writeIntToClient(int fd, long int num) { // return 0 if no errors
     return writeBufferToClient(fd, dataBuff, sizeof(conv), 0);
 }
 
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen, int shifting) {
     printf("in readToBuffFromClient\n");
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
-        charRead = read(connfd, buff + totalRead, messageLen - 1);
+        charRead = read(connfd, buff + (totalRead + (shifting*MB)), messageLen);
         if (charRead <= 0) {
             perror("error while reading from client to server");
             if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
@@ -268,7 +273,7 @@ uint32_t readIntFromClient(int connfd) { // returns zero if no errors
     printf("in readIntFromClient\n");
     uint32_t recv;
     char *intBuff = (char*)&recv;
-    if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t)) < 0)
+    if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t), 0) < 0)
         return -1;
     return ntohl(recv);
 }

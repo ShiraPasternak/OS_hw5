@@ -16,7 +16,8 @@
 #include <unistd.h>
 #include <string.h>
 
-#define MB (1024 * 1024)
+//#define MB (1024 * 1024)
+#define MB 10
 
 // todo adding perror and exit(1) where needed
 
@@ -59,6 +60,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("error in ftell in file");
         exit(1);
     }
+    rewind(fd);
     printf("lenOfFile = %lu\n", (unsigned long)lenOfFile);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
@@ -117,8 +119,9 @@ int main(int argc, char **argv) { //general build taken from recitations code
             charCounter = 0;
         }
     }
+    printf("charCounter = %d, chunksCounter = %d\n", charCounter, chunksCounter);
     if (charCounter != 0)
-        writeBufferToServer(sockfd, fileBuff, chunksCounter, chunksCounter);
+        writeBufferToServer(sockfd, fileBuff, charCounter, chunksCounter);
 
     uint32_t numPrintableChars = readIntFromServer(sockfd);
     /*
@@ -133,6 +136,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
 }
 
 uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+    printf("in readIntFromServer\n");
     uint32_t recv;
     char *intBuff = (char*)&recv;
     readToBuffFromServer(sockfd, intBuff, sizeof(uint32_t));
@@ -140,10 +144,11 @@ uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9
 }
 
 void readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
+    printf("in readToBuffFromServer\n");
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
-        charRead = read(sockfd, buff + totalRead, messageLen - 1);
+        charRead = read(sockfd, buff + totalRead, messageLen);
         if(charRead <= 0) {
             perror("error while reading from server to client");
             exit(1);
@@ -154,6 +159,7 @@ void readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
 }
 
 void writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+    printf("in writeIntToServer\n");
     uint32_t conv = htonl(num);
     /*char *dataBuff;
     memset(dataBuff, 0,sizeof(conv));*/
@@ -169,10 +175,11 @@ void clearBuffer(char *buff) {
 }
 
 void writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting) {
+    printf("in writeBufferToServer\n");
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
-        charSend = write(sockfd, buff + (totalSent + (shifting*messageLen)), messageLen);
+        charSend = write(sockfd, buff + (totalSent + (shifting*MB)), messageLen);
         if (charSend <= 0) {
             perror("error while writing from client to server");
             exit(1);
