@@ -32,9 +32,9 @@ bool clientCountIsEmpty();
 void clearBuffer(char *buff);
 int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting);
 int writeIntToClient(int fd, long int num);
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen, int shifting);
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen);
 uint32_t readIntFromClient(int connfd);
-int countPrintableInChunk(char *buff);
+int countPrintableInChunk(char *buff, int buffLen);
 
 
 pcc pcc_total[PRINTABLE], pcc_curr_client[PRINTABLE];
@@ -181,7 +181,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         }
         printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
-        int printable, charRead = 0, remChar = expectedLen, chunks = 0;
+        int printable = 0, charRead = 0, remChar = expectedLen, chunks = 0, expChunkLen;
         // reading phase - text
         memset(dataBuff, 0,sizeof(MB));
         if (expectedLen % MB > 0)
@@ -192,17 +192,18 @@ int main(int argc, char **argv) { //general build taken from recitations code
         for (int i = 0; i < chunks; ++i) { // reading in chunks of 1 MB
             printf("reading the %d-th chunk\n", i);
             if (remChar / MB == 0)
-                charRead = readToBuffFromClient(connfd, dataBuff, remChar % MB, chunks);
+                expChunkLen = remChar % MB;
             else
-                charRead = readToBuffFromClient(connfd, dataBuff, MB, chunks);
+                expChunkLen = MB;
+            charRead = readToBuffFromClient(connfd, dataBuff, expChunkLen);
             if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
             }
             remChar -= charRead;
+            printable += countPrintableInChunk(dataBuff, expChunkLen);
             printf("charRead = %d remChar = %d\n", charRead, remChar);
-
-            printable = countPrintableInChunk(dataBuff);
+            clearBuffer(dataBuff);
         }
         if (failureInClient) {
             failureInClient = 0;
@@ -249,12 +250,12 @@ int writeIntToClient(int fd, long int num) { // return 0 if no errors
     return writeBufferToClient(fd, dataBuff, sizeof(conv), 0);
 }
 
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen, int shifting) {
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
     printf("in readToBuffFromClient\n");
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
-        charRead = read(connfd, buff + (totalRead + (shifting*MB)), messageLen);
+        charRead = read(connfd, buff + totalRead, messageLen - totalRead);
         if (charRead <= 0) {
             perror("error while reading from client to server");
             if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
@@ -273,14 +274,14 @@ uint32_t readIntFromClient(int connfd) { // returns zero if no errors
     printf("in readIntFromClient\n");
     uint32_t recv;
     char *intBuff = (char*)&recv;
-    if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t), 0) < 0)
+    if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t)) < 0)
         return -1;
     return ntohl(recv);
 }
 
-int countPrintableInChunk(char *buff) {
+int countPrintableInChunk(char *buff, int buffLen) {
     int counter = 0;
-    for (int i = 0; i < PRINTABLE; ++i) {
+    for (int i = 0; i < buffLen; ++i) {
         if (buff[i] >= 32 && buff[i] <= 126) {
             pcc_curr_client->count_arr[buff[i]-32]++;
             counter++;

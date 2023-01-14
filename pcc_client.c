@@ -179,7 +179,7 @@ void writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
-        charSend = write(sockfd, buff + (totalSent + (shifting*MB)), messageLen);
+        charSend = write(sockfd, buff + totalSent, messageLen);
         if (charSend <= 0) {
             perror("error while writing from client to server");
             exit(1);
