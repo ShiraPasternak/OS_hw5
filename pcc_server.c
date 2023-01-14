@@ -102,7 +102,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     socklen_t addrsize = sizeof(struct sockaddr_in); // todo delete
 
     if (argc != 2) {
-        perror("incorrect number of inputs\n");
+        printf("incorrect number of inputs\n");
         exit(1);
     } else {
         sscanf(argv[1], "%hu", &port);
@@ -110,12 +110,12 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0)
-        perror("error in initializing of socket from server side\n");
+        perror("error in initializing of socket from server side");
     if (listenfd != EINTR)
         exit(1);
 
     if (memset(&serv_addr, 0, addrsize)) {
-        perror("error in memset in server side\n");
+        perror("error in memset in server side");
         exit(1);
     }
 
@@ -126,16 +126,16 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     //https://stackoverflow.com/questions/24194961/how-do-i-use-setsockoptso-reuseaddr
     if (setsockopt(listenfd, SOL_SOCKET/*getprotobyname("tcp")*/, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) { //todo make sure whats right
-        perror("Failed to set socket to SO_REUSEADDR\n");
+        perror("Failed to set socket to SO_REUSEADDR");
         exit(1);
     }
     if(bind(listenfd, (struct sockaddr*) &serv_addr, addrsize) != 0) {
-        perror("Bind Failed\n");
+        perror("Bind Failed");
         exit(1);
     }
 
     if(listen(listenfd, 10) != 0) {
-        perror("Listen Failed\n");
+        perror("Listen Failed");
         exit(1);
     }
     struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler};
@@ -151,7 +151,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         // but we want to print the client socket details
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         if(connfd < 0)
-            perror("Accept Failed\n");
+            perror("Accept Failed");
         if (connfd != -EINTR)
             exit(1);
 
@@ -216,7 +216,7 @@ int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting)
     while (messageLen - totalSent > 0) {
         charSend = write(connfd, buff + (totalSent + (shifting*messageLen)), messageLen);
         if (charSend <= 0)
-            perror("error while writing from server to client\n");
+            perror("error while writing from server to client");
         else if (charSend == -ETIMEDOUT || charSend == -ECONNRESET || charSend == -EPIPE || charSend == -EINTR || charSend == 0)
             return -1;
         else
@@ -239,7 +239,7 @@ int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
     while(messageLen - totalRead > 0) {
         charRead = read(connfd, buff + totalRead, messageLen - 1);
         if (charRead <= 0)
-            perror("error while reading from client to server\n");
+            perror("error while reading from client to server");
         else if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
             return -1;
         else

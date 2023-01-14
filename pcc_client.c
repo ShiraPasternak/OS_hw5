@@ -37,7 +37,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     socklen_t addrsize = sizeof(struct sockaddr_in ); // todo delete
 
     if (argc != 4) {
-        perror("incorrect number of inputs");
+        printf("incorrect number of inputs\n");
         exit(1);
     } else {
         ip = argv[1];
@@ -47,7 +47,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     fd = fopen(path, "r");
     if(fd < 0) {
-        perror("Can't open file for input path\n");
+        perror("Can't open file for input path");
         exit(1);
     }
     fseek(fd, 0, SEEK_END);
@@ -56,8 +56,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     memset(&serv_addr, 0, sizeof(serv_addr));
     // serv_addr.sin_family = AF_INET; todo make sure if needed
     serv_addr.sin_port = htons(port);
-    int success = inet_pton(AF_INET, ip, serv_addr);
-    printf("family after inet_pton()%h\n", serv_addr.sin_family); // todo delete after verifying
+    int success = inet_pton(AF_INET, ip, &serv_addr.sin_addr);
     if (success == 0) {
         perror("input ip isn't a valid string");
         exit(1);
@@ -69,14 +68,14 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     if( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) //SOCK_STREAM for TCP socket
     {
-        perror("Could not create socket \n");
+        perror("Could not create socket");
         exit(1);
     }
 
     printf("Client: connecting...\n"); // todo delete at the end
     // connect socket to the target address
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("Connect Failed\n");
+        perror("Connect Failed");
         exit(1);
     }
 
