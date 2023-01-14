@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -13,12 +14,10 @@
 #include <netdb.h>
 #include <stdint.h>
 #include <signal.h>
+#include <unistd.h>
 
 #define MB (1024 * 1024)
 #define PRINTABLE 95
-
-// todo adding perror and exit(1) where needed
-// todo handling SIGINT
 
 typedef struct PCC {
     int count_arr[PRINTABLE];
@@ -30,11 +29,11 @@ void addClientCountToTotal();
 bool clientCountIsEmpty();
 
 void clearBuffer(char *buff);
-int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting); //todo
-int writeIntToClient(int fd, long int num); //todo
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen); //todo
-uint32_t readIntFromClient(int connfd); //todo
-int countPrintableInChunk(char *buff); //todo
+int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting);
+int writeIntToClient(int fd, long int num);
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen);
+uint32_t readIntFromClient(int connfd);
+int countPrintableInChunk(char *buff);
 
 
 pcc pcc_total[PRINTABLE], pcc_curr_client[PRINTABLE];
@@ -43,8 +42,8 @@ bool totalIsUpdated;
 
 void initPcc() {
     if (firstClientFlag) {
-        memset(&pcc_total->count_arr, 0, PRINTABLE);
-        memset(&pcc_curr_client->count_arr, 0, PRINTABLE);
+        memset(&pcc_total->count_arr, 0, PRINTABLE * sizeof(int));
+        memset(&pcc_curr_client->count_arr, 0, PRINTABLE * sizeof(int));
         firstClientFlag = false;
     }
     clearClientPcc();
@@ -217,7 +216,7 @@ int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting)
     while (messageLen - totalSent > 0) {
         charSend = write(connfd, buff + (totalSent + (shifting*messageLen)), messageLen);
         if (charSend <= 0)
-            perror("error while writing from server to client\n"); // todo consider to modify
+            perror("error while writing from server to client\n");
         else if (charSend == -ETIMEDOUT || charSend == -ECONNRESET || charSend == -EPIPE || charSend == -EINTR || charSend == 0)
             return -1;
         else
@@ -240,13 +239,14 @@ int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
     while(messageLen - totalRead > 0) {
         charRead = read(connfd, buff + totalRead, messageLen - 1);
         if (charRead <= 0)
-            perror("error while reading from client to server\n"); // todo consider to modify
+            perror("error while reading from client to server\n");
         else if (charRead == -ETIMEDOUT || charRead == -ECONNRESET || charRead == -EPIPE || charRead == -EINTR || charRead == 0)
             return -1;
         else
             exit(1);
         totalRead += charRead;
     }
+    return 0;
 }
 
 //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c

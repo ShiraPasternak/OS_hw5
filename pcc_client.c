@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <string.h>
 
 #define MB (1024 * 1024)
 
