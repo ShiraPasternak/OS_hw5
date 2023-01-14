@@ -16,8 +16,8 @@
 #include <signal.h>
 #include <unistd.h>
 
-//#define MB (1024 * 1024)
-#define MB 10
+#define MB (1024 * 1024)
+//#define MB 10
 #define PRINTABLE 95
 
 typedef struct PCC {
@@ -185,8 +185,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
         uint32_t expectedLen = readIntFromClient(connfd);
         if (expectedLen < 0){
             close(connfd);
+            connfd = -1;
             continue;
-            //failureInClient = 1;
         }
         printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
@@ -217,6 +217,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         if (failureInClient) {
             failureInClient = 0;
             close(connfd);
+            connfd = -1;
             continue;
         }
         // writing phase

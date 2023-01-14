@@ -16,8 +16,8 @@
 #include <unistd.h>
 #include <string.h>
 
-//#define MB (1024 * 1024)
-#define MB 10
+#define MB (1024 * 1024)
+//#define MB 10
 
 // todo adding perror and exit(1) where needed
 
