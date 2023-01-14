@@ -28,6 +28,7 @@ void readToBuffFromServer(int sockfd, char *buff, size_t messageLen);
 
 int main(int argc, char **argv) { //general build taken from recitations code
     char *ip, *path, fileBuff[MB];
+    FILE *fd;
     unsigned short port;
     int sockfd = -1;
     struct sockaddr_in serv_addr;
@@ -44,7 +45,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         path = argv[3];
     }
 
-    int fd = open(path, O_RDWR);
+    fd = fopen(path, "r");
     if(fd < 0) {
         perror("Can't open file for input path\n");
         exit(1);
@@ -90,7 +91,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
            inet_ntoa((peer_addr.sin_addr)),  ntohs(peer_addr.sin_port));
     //todo until here
 
-    writeIntToServer(fd, lenOfFile);
+    writeIntToServer(sockfd, lenOfFile);
     /*uint32_t file_len_network_byte_order = htonl((uint32_t) lenOfFile); // todo handle error
     if (send(sockfd, &file_len_network_byte_order, sizeof(uint32_t), 0) != sizeof(uint32_t)) { // https://www.gta.ufrj.br/ensino/eel878/sockets/htonsman.html
         perror("failed to send len of file to server");
@@ -115,9 +116,9 @@ int main(int argc, char **argv) { //general build taken from recitations code
     if (recv(sockfd, &num_of_printable_chars, sizeof(uint32_t), 0) != sizeof(uint32_t)) {
         perror("failed to read num_of_printable_chars from server");
     }*/
-    printf("# of printable characters: %u\n", (unsigned long) numPrintableChars);
+    printf("# of printable characters: %u\n", (unsigned int) numPrintableChars);
 
-    close(fd);
+    fclose(fd);
     close(sockfd);
     exit(0);
 }
@@ -141,12 +142,12 @@ void readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
     }
 }
 
-void writeIntToServer(int fd, long int num) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+void writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
     uint32_t conv = htonl(num);
     /*char *dataBuff;
     memset(dataBuff, 0,sizeof(conv));*/
     char *dataBuff = (char*)&conv;
-    writeBufferToServer(fd, dataBuff, sizeof(conv), 0);
+    writeBufferToServer(sockfd, dataBuff, sizeof(conv), 0);
 }
 
 void clearBuffer(char *buff) {
