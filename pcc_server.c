@@ -39,7 +39,7 @@ int countPrintableInChunk(char *buff, int buffLen);
 
 pcc pcc_total[PRINTABLE], pcc_curr_client[PRINTABLE];
 bool firstClientFlag = true;
-bool totalIsUpdated;
+bool stopServerFlag = false;
 
 void initPcc() {
     if (firstClientFlag) {
@@ -60,7 +60,6 @@ void addClientCountToTotal() {
     for (int i = 0; i < PRINTABLE; ++i) {
         pcc_total->count_arr[i] += pcc_curr_client->count_arr[i];
     }
-    totalIsUpdated = true;
 }
 
 bool clientCountIsEmpty() {
@@ -79,17 +78,12 @@ void printStatic() {
 }
 
 void currClientSignalHandler(int signum) {
-    printf("Can't stop me! (%d)\n", signum); // todo delete before submitting
     if (clientCountIsEmpty()) {
-        printf("no client is being processed\n");
+        printStatic();
         exit(1);
     }
     else {
-        printf("one client is being processed\n");
-        if (!totalIsUpdated)
-            addClientCountToTotal();
-        printStatic();
-        exit(1);
+        stopServerFlag = true;
     }
 }
 
@@ -119,8 +113,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
 /*    if (listenfd < 0 && listenfd != EINTR)
         exit(1);*/
 
-    printf("socket created\n");
-
     memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
     // INADDR_ANY = any local machine address
@@ -132,29 +124,23 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("Failed to set socket to SO_REUSEADDR");
         exit(1);
     }
-    printf("setsockopt done\n");
     if(bind(listenfd, (struct sockaddr*) &serv_addr, addrsize) != 0) {
         perror("Bind Failed");
         exit(1);
     }
-    printf("bind done\n");
     if(listen(listenfd, 10) != 0) {
         perror("Listen Failed");
         exit(1);
     }
-    printf("listen done\n");
 
     struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler};
 
     while(1) {
-        printf("entered loop\n");
-        totalIsUpdated = false;
         if (sigaction(SIGINT, &handleCurrClient, NULL) == -1) { // taken for recitation code
             perror("Signal handle registration failed");
             exit(1);
         }
         initPcc();
-        printf("succeeded to init PCC\n");
         // Accept a connection.
         // Can use NULL in 2nd and 3rd arguments
         // but we want to print the client socket details
@@ -168,19 +154,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
             continue;
         }
 
-        printf("connection succeeded\n");
-        // todo delete at the end
-        getsockname(connfd, (struct sockaddr*) &my_addr, &addrsize);
-        getpeername(connfd, (struct sockaddr*) &peer_addr, &addrsize);
-        printf( "Server: Client connected.\n"
-                "\t\tClient IP: %s Client Port: %d\n"
-                "\t\tServer IP: %s Server Port: %d\n",
-                inet_ntoa( peer_addr.sin_addr ),
-                ntohs(     peer_addr.sin_port ),
-                inet_ntoa( my_addr.sin_addr   ),
-                ntohs(     my_addr.sin_port   ) );
-        //todo until here
-        printf("starting reading from client - len of file\n");
         // reading phase - len of text
         uint32_t expectedLen = readIntFromClient(connfd);
         if (expectedLen < 0){
@@ -188,7 +161,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
             connfd = -1;
             continue;
         }
-        printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
         int printable = 0, charRead = 0, remChar = expectedLen, chunks = 0, expChunkLen;
         // reading phase - text
@@ -197,9 +169,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             chunks = (expectedLen / MB) + 1;
         else
             chunks = expectedLen / MB;
-        printf("starting reading from client - file. need to process %d chunks\n", chunks);
         for (int i = 0; i < chunks; ++i) { // reading in chunks of 1 MB
-            printf("reading the %d-th chunk\n", i);
             if (remChar / MB == 0)
                 expChunkLen = remChar % MB;
             else
@@ -211,7 +181,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
             }
             remChar -= charRead;
             printable += countPrintableInChunk(dataBuff, expChunkLen);
-            printf("charRead = %d remChar = %d\n", charRead, remChar);
             clearBuffer(dataBuff);
         }
         if (failureInClient) {
@@ -223,9 +192,13 @@ int main(int argc, char **argv) { //general build taken from recitations code
         // writing phase
         if (writeIntToClient(connfd, printable) == 0)
             addClientCountToTotal();
-        signal(SIGINT, SIG_DFL);
+        //signal(SIGINT, SIG_DFL);
         // close socket
         close(connfd);
+        if (stopServerFlag) {
+            printStatic();
+            exit(1);
+        }
     }
     exit(0);
 }
@@ -261,7 +234,6 @@ int writeIntToClient(int fd, long int num) { // return 0 if no errors
 }
 
 int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
-    printf("in readToBuffFromClient\n");
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
@@ -275,13 +247,11 @@ int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
         }
         totalRead += charRead;
     }
-    printf("server read : %s\n", buff);
     return totalRead;
 }
 
 //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
 uint32_t readIntFromClient(int connfd) { // returns zero if no errors
-    printf("in readIntFromClient\n");
     uint32_t recv;
     char *intBuff = (char*)&recv;
     if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t)) < 0)
