@@ -114,8 +114,11 @@ int main(int argc, char **argv) { //general build taken from recitations code
             writeBufferToServer(sockfd, fileBuff, MB, chunksCounter);
             clearBuffer(fileBuff);
             chunksCounter++;
+            charCounter = 0;
         }
     }
+    if (charCounter != 0)
+        writeBufferToServer(sockfd, fileBuff, chunksCounter, chunksCounter);
 
     uint32_t numPrintableChars = readIntFromServer(sockfd);
     /*

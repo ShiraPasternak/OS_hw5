@@ -178,20 +178,25 @@ int main(int argc, char **argv) { //general build taken from recitations code
         }
         printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
-        int printable, chunks = 0;
+        int printable, charRead = 0, remChar = expectedLen, chunks = 0;
         // reading phase - text
         memset(dataBuff, 0,sizeof(MB));
         if (expectedLen % MB > 0)
-            chunks = expectedLen / MB + 1;
+            chunks = (expectedLen / MB) + 1;
         else
             chunks = expectedLen / MB;
-        printf("starting reading from client - file\n");
+        printf("starting reading from client - file. need to process %d chunks\n", chunks);
         for (int i = 0; i < chunks; ++i) { // reading in chunks of 1 MB
             printf("reading the %d-th chunk\n", i);
-            if (readToBuffFromClient(connfd, dataBuff, MB) < 0 && failureInClient != 1) {
+            if (remChar / MB == 0)
+                charRead = readToBuffFromClient(connfd, dataBuff, remChar % MB);
+            else
+                charRead = readToBuffFromClient(connfd, dataBuff, MB);
+            if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
             }
+            remChar -= charRead;
             printable = countPrintableInChunk(dataBuff);
         }
         if (failureInClient) {
@@ -255,7 +260,7 @@ int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
         totalRead += charRead;
     }
     printf("server read : %s\n", buff);
-    return 0;
+    return totalRead;
 }
 
 //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
