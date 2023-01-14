@@ -114,6 +114,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
     if (listenfd != EINTR)
         exit(1);
 
+    printf("socket created\n");
+
     if (memset(&serv_addr, 0, addrsize)) {
         perror("error in memset in server side");
         exit(1);
@@ -129,17 +131,20 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("Failed to set socket to SO_REUSEADDR");
         exit(1);
     }
+    printf("setsockopt done\n");
     if(bind(listenfd, (struct sockaddr*) &serv_addr, addrsize) != 0) {
         perror("Bind Failed");
         exit(1);
     }
-
+    printf("bind done\n");
     if(listen(listenfd, 10) != 0) {
         perror("Listen Failed");
         exit(1);
     }
+    printf("listen done\n");
     struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler};
     while(1) {
+        printf("entered loop\n");
         totalIsUpdated = false;
         if (sigaction(SIGINT, &handleCurrClient, NULL) == -1) { // taken for recitation code
             perror("Signal handle registration failed");

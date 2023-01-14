@@ -61,7 +61,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("input ip isn't a valid string");
         exit(1);
     }
-    else {
+    else if (success < 0) {
         perror("error in inet_pton()");
         exit(1);
     }
