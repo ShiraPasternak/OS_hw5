@@ -79,12 +79,12 @@ void printStatic() {
 
 void currClientSignalHandler(int signum) {
     if (clientCountIsEmpty()) {
-        printf("no client is being processed\n");
+        //printf("no client is being processed\n");
         printStatic();
         exit(1);
     }
     else {
-        printf("one client is being processed\n");
+        //printf("one client is being processed\n");
         stopServerFlag = true;
     }
 }
@@ -143,8 +143,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
         }
         initPcc();
         // Accept a connection.
-        // Can use NULL in 2nd and 3rd arguments
-        // but we want to print the client socket details
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         if (connfd < 0 && connfd != -EINTR) {
             exit(1);
@@ -162,7 +160,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             connfd = -1;
             continue;
         }
-        printf("expectedLen = %lu\n",(unsigned long)expectedLen);
+        //printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
         int printable = 0, charRead = 0, remChar, chunks = 0, expChunkLen;
         remChar = expectedLen;
@@ -178,7 +176,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             else
                 expChunkLen = MB;
             charRead = readToBuffFromClient(connfd, dataBuff, expChunkLen);
-            printf("after first reading in server");
+            //printf("after first reading in server");
             if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
@@ -194,7 +192,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             continue;
         }
         // writing phase
-        printf("rprintble =  %d\n", printable);
+        //printf("rprintble =  %d\n", printable);
         if (writeIntToClient(connfd, printable) == 0)
             addClientCountToTotal();
         //signal(SIGINT, SIG_DFL);

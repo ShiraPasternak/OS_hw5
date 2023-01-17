@@ -67,7 +67,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         cleanUp(fd, sockfd);
         exit(1);
     }
-    printf("lenOfFile = %lu\n", (unsigned long)lenOfFile);
+    //printf("lenOfFile = %lu\n", (unsigned long)lenOfFile);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET; // todo make sure if needed
@@ -149,7 +149,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             printf("charCounter = %d, chunksCounter = %d\n", charCounter);
         }
     }
-    if (c == EOF) {
+    if (c == EOF && (((chunksCounter*MB) + charCounter) != lenOfFile)) {
         perror("Failed reading file");
         cleanUp(fd, sockfd);
         exit(1);
@@ -161,8 +161,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
             exit(1);
         }
     }
-    if ((chunksCounter*MB) + charCounter != lenOfFile)
-        printf("problame wite reading from file in chunks and sending it\n");
     printf("shit im here2\n");*/
     uint32_t numPrintableChars = readIntFromServer(sockfd);
     if (numPrintableChars < 0) {
@@ -215,7 +213,7 @@ int writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/qu
 }
 
 int writeBufferToServer(int sockfd, char *buff, size_t messageLen) {
-    printf("in writeBufferToServer with len = %d and shift = %d\n", (int)messageLen, shifting);
+    //printf("in writeBufferToServer with len = %d and shift = %d\n", (int)messageLen, shifting);
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
