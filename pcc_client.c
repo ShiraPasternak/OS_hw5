@@ -21,7 +21,7 @@
 
 // todo adding perror and exit(1) where needed
 
-int writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting);
+int writeBufferToServer(int sockfd, char *buff, size_t messageLen);
 int writeIntToServer(int fd, long int num);
 void clearBuffer(char *buff);
 uint32_t readIntFromServer(int sockfd);
@@ -107,20 +107,46 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }*/
 
     //memset(fileBuff, 0,sizeof(MB));
-    char c;
+
+    int charWrote = 0, remChar, chunks = 0, expChunkLen;
+    remChar = lenOfFile;
+    if (lenOfFile % MB > 0)
+        chunks = (lenOfFile / MB) + 1;
+    else
+        chunks = lenOfFile / MB;
+    for (int i = 0; i < chunks; ++i) { // writing in chunks of 1 MB
+        if (remChar / MB == 0)
+            expChunkLen = remChar % MB;
+        else
+            expChunkLen = MB;
+        if (fread(fileBuff, expChunkLen, 1, fd) < expChunkLen) {
+            perror("Failed reading file");
+            cleanUp(fd, sockfd);
+            exit(1);
+        }
+        else {
+            if (writeBufferToServer(sockfd, fileBuff, expChunkLen) < 0) {
+                cleanUp(fd, sockfd);
+                exit(1);
+            }
+            remChar -= charWrote;
+            clearBuffer(fileBuff);
+        }
+    }
+    /*    char c;
     int charCounter = 0, chunksCounter = 0;
     while ((c = fgetc(fd)) != EOF) {
         fileBuff[charCounter] = c;
         charCounter++;
         if (charCounter==MB) {
-            if (writeBufferToServer(sockfd, fileBuff, MB, chunksCounter) < 0) {
+            if (writeBufferToServer(sockfd, fileBuff, MB) < 0) {
                 cleanUp(fd, sockfd);
                 exit(1);
             }
             clearBuffer(fileBuff);
             chunksCounter++;
             charCounter = 0;
-            printf("charCounter = %d, chunksCounter = %d\n", charCounter, chunksCounter);
+            printf("charCounter = %d, chunksCounter = %d\n", charCounter);
         }
     }
     if (c == EOF) {
@@ -130,14 +156,14 @@ int main(int argc, char **argv) { //general build taken from recitations code
     }
     if (charCounter != 0) {
         printf("shit im here1\n");
-        if (writeBufferToServer(sockfd, fileBuff, charCounter, chunksCounter) < 0) {
+        if (writeBufferToServer(sockfd, fileBuff, charCounter) < 0) {
             cleanUp(fd, sockfd);
             exit(1);
         }
     }
     if ((chunksCounter*MB) + charCounter != lenOfFile)
         printf("problame wite reading from file in chunks and sending it\n");
-    printf("shit im here2\n");
+    printf("shit im here2\n");*/
     uint32_t numPrintableChars = readIntFromServer(sockfd);
     if (numPrintableChars < 0) {
         cleanUp(fd, sockfd);
@@ -185,15 +211,15 @@ int readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
 int writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
     uint32_t conv = htonl(num);
     char *dataBuff = (char*)&conv;
-    return writeBufferToServer(sockfd, dataBuff, sizeof(conv), 0);
+    return writeBufferToServer(sockfd, dataBuff, sizeof(conv));
 }
 
-int writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting) {
+int writeBufferToServer(int sockfd, char *buff, size_t messageLen) {
     printf("in writeBufferToServer with len = %d and shift = %d\n", (int)messageLen, shifting);
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
-        charSend = write(sockfd, buff + (totalSent + shifting*MB), messageLen);
+        charSend = write(sockfd, buff + totalSent, messageLen);
         if (charSend <= 0) {
             perror("error while writing from client to server");
             return -1;
