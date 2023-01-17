@@ -61,7 +61,13 @@ int main(int argc, char **argv) { //general build taken from recitations code
         cleanUp(fd, sockfd);
         exit(1);
     }
-    rewind(fd);
+    //rewind(fd);
+    if (fseek(fd, 0, SEEK_SET) < 0) {
+        perror("error in fseek in file");
+        cleanUp(fd, sockfd);
+        exit(1);
+    }
+    printf("lenOfFile = %lu\n", (unsigned long)lenOfFile);
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET; // todo make sure if needed
@@ -100,7 +106,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("failed to send len of file to server");
     }*/
 
-    memset(fileBuff, 0,sizeof(MB));
+    //memset(fileBuff, 0,sizeof(MB));
     char c;
     int charCounter = 0, chunksCounter = 0;
     while ((c = fgetc(fd)) != EOF) {
@@ -114,14 +120,24 @@ int main(int argc, char **argv) { //general build taken from recitations code
             clearBuffer(fileBuff);
             chunksCounter++;
             charCounter = 0;
+            printf("charCounter = %d, chunksCounter = %d\n", charCounter, chunksCounter);
         }
     }
-    if (charCounter != 0)
+    if (c == EOF) {
+        perror("Failed reading file");
+        cleanUp(fd, sockfd);
+        exit(1);
+    }
+    if (charCounter != 0) {
+        printf("shit im here1\n");
         if (writeBufferToServer(sockfd, fileBuff, charCounter, chunksCounter) < 0) {
             cleanUp(fd, sockfd);
             exit(1);
         }
-
+    }
+    if ((chunksCounter*MB) + charCounter != lenOfFile)
+        printf("problame wite reading from file in chunks and sending it\n");
+    printf("shit im here2\n");
     uint32_t numPrintableChars = readIntFromServer(sockfd);
     if (numPrintableChars < 0) {
         cleanUp(fd, sockfd);
@@ -173,10 +189,11 @@ int writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/qu
 }
 
 int writeBufferToServer(int sockfd, char *buff, size_t messageLen, int shifting) {
+    printf("in writeBufferToServer with len = %d and shift = %d\n", (int)messageLen, shifting);
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
-        charSend = write(sockfd, buff + totalSent, messageLen);
+        charSend = write(sockfd, buff + (totalSent + shifting*MB), messageLen);
         if (charSend <= 0) {
             perror("error while writing from client to server");
             return -1;

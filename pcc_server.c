@@ -79,10 +79,12 @@ void printStatic() {
 
 void currClientSignalHandler(int signum) {
     if (clientCountIsEmpty()) {
+        printf("no client is being processed\n");
         printStatic();
         exit(1);
     }
     else {
+        printf("one client is being processed\n");
         stopServerFlag = true;
     }
 }
@@ -94,7 +96,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
     int failureInClient = 0;
 
     struct sockaddr_in serv_addr;
-    struct sockaddr_in my_addr;   // where we actually connected through todo delete
     struct sockaddr_in peer_addr; // where we actually connected to todo delete
     socklen_t addrsize = sizeof(struct sockaddr_in); // todo delete
 
@@ -120,7 +121,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
     serv_addr.sin_port = htons(port);
 
     //https://stackoverflow.com/questions/24194961/how-do-i-use-setsockoptso-reuseaddr
-    if (setsockopt(listenfd, SOL_SOCKET/*getprotobyname("tcp")*/, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) { //todo make sure whats right
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
         perror("Failed to set socket to SO_REUSEADDR");
         exit(1);
     }
@@ -161,10 +162,12 @@ int main(int argc, char **argv) { //general build taken from recitations code
             connfd = -1;
             continue;
         }
+        printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
-        int printable = 0, charRead = 0, remChar = expectedLen, chunks = 0, expChunkLen;
+        int printable = 0, charRead = 0, remChar, chunks = 0, expChunkLen;
+        remChar = expectedLen;
         // reading phase - text
-        memset(dataBuff, 0,sizeof(MB));
+        //memset(dataBuff, 0,sizeof(MB));
         if (expectedLen % MB > 0)
             chunks = (expectedLen / MB) + 1;
         else
@@ -175,6 +178,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             else
                 expChunkLen = MB;
             charRead = readToBuffFromClient(connfd, dataBuff, expChunkLen);
+            printf("after first reading in server");
             if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
@@ -190,6 +194,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
             continue;
         }
         // writing phase
+        printf("rprintble =  %d\n", printable);
         if (writeIntToClient(connfd, printable) == 0)
             addClientCountToTotal();
         //signal(SIGINT, SIG_DFL);
