@@ -108,7 +108,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
 
     //memset(fileBuff, 0,sizeof(MB));
 
-    int charWrote = 0, remChar, chunks = 0, expChunkLen;
+    int charRead = 0, remChar, chunks = 0, expChunkLen;
     remChar = lenOfFile;
     if (lenOfFile % MB > 0)
         chunks = (lenOfFile / MB) + 1;
@@ -119,7 +119,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
             expChunkLen = remChar % MB;
         else
             expChunkLen = MB;
-        if (fread(fileBuff, expChunkLen, 1, fd) < expChunkLen) {
+        charRead = fread(fileBuff, 1, expChunkLen, fd);
+        if (charRead < expChunkLen) {
             perror("Failed reading file");
             cleanUp(fd, sockfd);
             exit(1);
@@ -129,7 +130,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
                 cleanUp(fd, sockfd);
                 exit(1);
             }
-            remChar -= charWrote;
+            remChar -= charRead;
             clearBuffer(fileBuff);
         }
     }
