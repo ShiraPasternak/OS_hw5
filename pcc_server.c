@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 #define MB (1024 * 1024)
-//#define MB 10
 #define PRINTABLE 95
 
 typedef struct PCC {
@@ -28,6 +27,7 @@ void initPcc();
 void clearClientPcc();
 void addClientCountToTotal();
 bool clientCountIsEmpty();
+void printStatic()
 
 void clearBuffer(char *buff);
 int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting);
@@ -79,12 +79,10 @@ void printStatic() {
 
 void currClientSignalHandler(int signum) {
     if (clientCountIsEmpty()) {
-        //printf("no client is being processed\n");
         printStatic();
-        exit(1);
+        exit(0);
     }
     else {
-        //printf("one client is being processed\n");
         stopServerFlag = true;
     }
 }
@@ -96,8 +94,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
     int failureInClient = 0;
 
     struct sockaddr_in serv_addr;
-    struct sockaddr_in peer_addr; // where we actually connected to todo delete
-    socklen_t addrsize = sizeof(struct sockaddr_in); // todo delete
+    struct sockaddr_in peer_addr;
+    socklen_t addrsize = sizeof(struct sockaddr_in);
 
     if (argc != 2) {
         perror("incorrect number of inputs\n");
@@ -111,17 +109,15 @@ int main(int argc, char **argv) { //general build taken from recitations code
         perror("error in initializing of socket from server side");
         exit(1);
     }
-/*    if (listenfd < 0 && listenfd != EINTR)
-        exit(1);*/
 
+    // Build server address
     memset(&serv_addr, 0, addrsize);
     serv_addr.sin_family = AF_INET;
-    // INADDR_ANY = any local machine address
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(port);
 
     //https://stackoverflow.com/questions/24194961/how-do-i-use-setsockoptso-reuseaddr
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) { // set socket to be reusable
         perror("Failed to set socket to SO_REUSEADDR");
         exit(1);
     }
@@ -134,7 +130,7 @@ int main(int argc, char **argv) { //general build taken from recitations code
         exit(1);
     }
 
-    struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler};
+    struct sigaction handleCurrClient = {.sa_handler = currClientSignalHandler}; // taken for recitation code
 
     while(1) {
         if (sigaction(SIGINT, &handleCurrClient, NULL) == -1) { // taken for recitation code
@@ -142,7 +138,8 @@ int main(int argc, char **argv) { //general build taken from recitations code
             exit(1);
         }
         initPcc();
-        // Accept a connection.
+
+        // Accept a connection
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         if (connfd < 0 && connfd != -EINTR) {
             exit(1);
@@ -150,22 +147,20 @@ int main(int argc, char **argv) { //general build taken from recitations code
         }
         if (connfd < 0) {
             perror("Accept Failed");
-            continue;
+            continue; // jump to next client
         }
 
-        // reading phase - len of text
+        // reading N (size of text) from client
         uint32_t expectedLen = readIntFromClient(connfd);
         if (expectedLen < 0){
             close(connfd);
             connfd = -1;
-            continue;
+            continue; // jump to next client
         }
-        //printf("expectedLen = %lu\n",(unsigned long)expectedLen);
 
-        int printable = 0, charRead = 0, remChar, chunks = 0, expChunkLen;
+        // reading chunks of chars max 1 MB size from client
+        int printable = 0, charRead = 0, remChar, chunks = 0, expChunkLen = 0;
         remChar = expectedLen;
-        // reading phase - text
-        //memset(dataBuff, 0,sizeof(MB));
         if (expectedLen % MB > 0)
             chunks = (expectedLen / MB) + 1;
         else
@@ -176,7 +171,6 @@ int main(int argc, char **argv) { //general build taken from recitations code
             else
                 expChunkLen = MB;
             charRead = readToBuffFromClient(connfd, dataBuff, expChunkLen);
-            //printf("after first reading in server");
             if (charRead < 0 && failureInClient != 1) {
                 failureInClient = 1;
                 break;
@@ -185,31 +179,24 @@ int main(int argc, char **argv) { //general build taken from recitations code
             printable += countPrintableInChunk(dataBuff, expChunkLen);
             clearBuffer(dataBuff);
         }
-        if (failureInClient) {
+        if (failureInClient) { // if read from client field due accepted, jump to next client
             failureInClient = 0;
             close(connfd);
             connfd = -1;
             continue;
         }
-        // writing phase
-        //printf("rprintble =  %d\n", printable);
+
+        // Write C to client
         if (writeIntToClient(connfd, printable) == 0)
             addClientCountToTotal();
-        //signal(SIGINT, SIG_DFL);
-        // close socket
+
         close(connfd);
-        if (stopServerFlag) {
+        if (stopServerFlag) { //part of SIGINT handling
             printStatic();
-            exit(1);
+            exit(0);
         }
     }
     exit(0);
-}
-
-void clearBuffer(char *buff) {
-    for (int i = 0; i < MB; ++i) {
-        buff[i] = 0;
-    }
 }
 
 int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting) { // return 0 if no errors
@@ -229,14 +216,7 @@ int writeBufferToClient(int connfd, char *buff, size_t messageLen, int shifting)
     return 0;
 }
 
-//https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
-int writeIntToClient(int fd, long int num) { // return 0 if no errors
-    uint32_t conv = htonl(num);
-    char *dataBuff = (char*)&conv;
-    return writeBufferToClient(fd, dataBuff, sizeof(conv), 0);
-}
-
-int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
+int readToBuffFromClient(int connfd, char *buff, size_t messageLen) { // returns number of chars read successfully from client
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
@@ -254,12 +234,25 @@ int readToBuffFromClient(int connfd, char *buff, size_t messageLen) {
 }
 
 //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
-uint32_t readIntFromClient(int connfd) { // returns zero if no errors
+int writeIntToClient(int fd, long int num) { // return 0 if no errors
+    uint32_t conv = htonl(num);
+    char *dataBuff = (char*)&conv;
+    return writeBufferToClient(fd, dataBuff, sizeof(conv), 0);
+}
+
+//https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+uint32_t readIntFromClient(int connfd) {  // returns number of chars read successfully from client
     uint32_t recv;
     char *intBuff = (char*)&recv;
     if (readToBuffFromClient(connfd, intBuff, sizeof(uint32_t)) < 0)
         return -1;
     return ntohl(recv);
+}
+
+void clearBuffer(char *buff) {
+    for (int i = 0; i < MB; ++i) {
+        buff[i] = 0;
+    }
 }
 
 int countPrintableInChunk(char *buff, int buffLen) {
