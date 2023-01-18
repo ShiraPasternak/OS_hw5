@@ -153,7 +153,8 @@ void cleanUp(FILE *fd, int sockfd) {
     fclose(fd);
 }
 
-uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+//https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+uint32_t readIntFromServer(int sockfd) { // return 0 if no errors
     uint32_t recv;
     char *intBuff = (char*)&recv;
     if (readToBuffFromServer(sockfd, intBuff, sizeof(uint32_t)) < 0) {
@@ -162,13 +163,14 @@ uint32_t readIntFromServer(int sockfd) { //https://stackoverflow.com/questions/9
     return ntohl(recv);
 }
 
-int writeIntToServer(int sockfd, long int num) { // https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+// https://stackoverflow.com/questions/9140409/transfer-integer-over-a-socket-in-c
+int writeIntToServer(int sockfd, long int num) { // return 0 if no errors
     uint32_t conv = htonl(num);
     char *dataBuff = (char*)&conv;
     return writeBufferToServer(sockfd, dataBuff, sizeof(conv));
 }
 
-int readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
+int readToBuffFromServer(int sockfd, char *buff, size_t messageLen) { // return 0 if no errors
     int charRead = 0;
     int totalRead = 0;
     while(messageLen - totalRead > 0) {
@@ -182,7 +184,7 @@ int readToBuffFromServer(int sockfd, char *buff, size_t messageLen) {
     return 0;
 }
 
-int writeBufferToServer(int sockfd, char *buff, size_t messageLen) {
+int writeBufferToServer(int sockfd, char *buff, size_t messageLen) { // return 0 if no errors
     int charSend = 0;
     int totalSent = 0;
     while (messageLen - totalSent > 0) {
